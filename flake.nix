@@ -44,6 +44,7 @@
             cargo-watch
             rust-analyzer
             bacon
+            chafa
           ];
 
           env = {

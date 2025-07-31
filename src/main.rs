@@ -1,10 +1,14 @@
+use std::io::{Cursor, Write};
+use std::process::{Command, Stdio};
 use std::{error::Error, fmt::Display};
 
-use image::{DynamicImage, load_from_memory};
+use crossterm::event::{self, Event};
+use image::{DynamicImage, ImageOutputFormat, load_from_memory};
 use lofty::prelude::*;
 use lofty::probe::Probe;
 use mpd::Client;
 use rascii_art::{self};
+use ratatui::{Frame, text::Text};
 
 const MUSIC_LIBRARY: &str = "/mnt/Volume/music-library/Music";
 
@@ -46,16 +50,11 @@ impl Song {
             cover,
         }
     }
-}
 
-impl Display for Song {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Title: {}", self.title)?;
-        writeln!(f, "Artist: {}", self.artist)?;
-        writeln!(f, "Album: {}", self.album)?;
+    fn get_cover_ascii(&self) -> Result<String, Box<dyn Error>> {
         let mut cover_ascii = String::new();
         let charset = self
-            .artist
+            .album
             .as_str()
             .chars()
             .map(|c| c.to_string())
@@ -65,7 +64,7 @@ impl Display for Song {
             &self.cover,
             &mut cover_ascii,
             &rascii_art::RenderOptions {
-                width: Some(50),
+                width: Some(25),
                 colored: true,
                 // charset: &["▁", "▂", "▃", "▄", "▅", "▆", "▇"],
                 // charset: &["󰝤"],
@@ -76,8 +75,56 @@ impl Display for Song {
             },
         )
         .expect("ERROR: Failed to render ascii image");
-        writeln!(f, "{}", cover_ascii)
+        Ok(cover_ascii)
     }
+}
+
+impl Display for Song {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Title: {}", self.title)?;
+        writeln!(f, "Artist: {}", self.artist)?;
+        writeln!(f, "Album: {}", self.album)?;
+        writeln!(f, "{}", &self.get_cover_ascii().expect("fail"))
+    }
+}
+
+fn draw(frame: &mut Frame) {
+    let mut conn = Client::connect("localhost:6600").expect("Failed to connect to MPD server");
+    let song = Song::from_mpd(&mut conn, MUSIC_LIBRARY.to_string());
+
+    let text = Text::raw(song.get_cover_ascii().unwrap());
+    frame.render_widget(text, frame.area());
+}
+
+fn run(terminal: &mut ratatui::DefaultTerminal) -> std::io::Result<()> {
+    loop {
+        terminal.draw(draw).expect("failed to draw frame");
+        if matches!(event::read().expect("failed to read event"), Event::Key(_)) {
+            break Ok(());
+        }
+    }
+}
+
+fn print_using_chafa(image: &DynamicImage) -> Result<String, Box<dyn Error>> {
+    let mut child = Command::new("chafa")
+        .arg("--size=50x25")
+        .arg("--format=symbols")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()?;
+
+    {
+        let mut buffer = Cursor::new(Vec::new());
+        image.write_to(&mut buffer, ImageOutputFormat::Png)?;
+        let image_bytes = buffer.into_inner();
+
+        let mut stdin = child.stdin.take().unwrap();
+        stdin.write_all(&image_bytes);
+    }
+
+    let output = child.wait_with_output()?;
+    let ascii = String::from_utf8(output.stdout)?;
+    Ok(ascii)
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -85,7 +132,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let song = Song::from_mpd(&mut conn, MUSIC_LIBRARY.to_string());
 
-    print!("{song}");
+    // println!("{}", song.get_cover_ascii().unwrap());
+
+    println!("{}", print_using_chafa(&song.cover).unwrap());
+
+    // let mut terminal = ratatui::init();
+    // run(&mut terminal)?;
+    // ratatui::restore();
 
     Ok(())
 }
