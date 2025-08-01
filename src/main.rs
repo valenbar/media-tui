@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::io::{Cursor, Write};
 use std::process::{Command, Stdio};
 use std::{error::Error, fmt::Display};
