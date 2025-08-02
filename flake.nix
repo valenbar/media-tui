@@ -17,9 +17,19 @@
       let
         pkgs = import nixpkgs { inherit system; };
         naersk-lib = pkgs.callPackage naersk { };
+        runtimeDependencies = with pkgs; [
+          chafa
+        ];
       in
       {
-        defaultPackage = naersk-lib.buildPackage ./.;
+        defaultPackage = naersk-lib.buildPackage {
+          src = ./.;
+          nativeBuildInputs = [ pkgs.makeWrapper ];
+          postInstall = ''
+            wrapProgram $out/bin/mpd-tui \
+              --prefix PATH : ${pkgs.lib.makeBinPath runtimeDependencies}
+          '';
+        };
         devShell =
           with pkgs;
           mkShell {
@@ -30,8 +40,9 @@
               pre-commit
               rustPackages.clippy
               bacon
-              chafa
-            ];
+            ]
+            ++ runtimeDependencies;
+
             RUST_SRC_PATH = rustPlatform.rustLibSrc;
           };
       }
