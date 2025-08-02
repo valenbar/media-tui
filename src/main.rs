@@ -108,20 +108,25 @@ fn run(terminal: &mut ratatui::DefaultTerminal) -> std::io::Result<()> {
 }
 
 fn print_using_chafa(image: &DynamicImage) -> Result<String, Box<dyn Error>> {
+    let mut image_buffer = Cursor::new(Vec::new());
+    image.write_to(&mut image_buffer, ImageOutputFormat::Png)?;
+    let image_bytes = image_buffer.into_inner();
+
     let mut child = Command::new("chafa")
-        .arg("--size=50x25")
+        .arg("--size=25x25")
         .arg("--format=symbols")
+        .arg("--colors=full")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .spawn()?;
+        .spawn()
+        .expect("failed to execute chafa");
 
     {
-        let mut buffer = Cursor::new(Vec::new());
-        image.write_to(&mut buffer, ImageOutputFormat::Png)?;
-        let image_bytes = buffer.into_inner();
-
         let mut stdin = child.stdin.take().unwrap();
-        stdin.write_all(&image_bytes);
+        if let Err(e) = stdin.write_all(&image_bytes) {
+            let _ = child.wait();
+            return Err(Box::new(e));
+        }
     }
 
     let output = child.wait_with_output()?;
@@ -136,7 +141,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // println!("{}", song.get_cover_ascii().unwrap());
 
-    println!("{}", print_using_chafa(&song.cover).unwrap());
+    println!("{}", print_using_chafa(&song.cover)?);
 
     // let mut terminal = ratatui::init();
     // run(&mut terminal)?;
