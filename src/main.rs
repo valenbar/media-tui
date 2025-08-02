@@ -141,7 +141,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // println!("{}", song.get_cover_ascii().unwrap());
 
-    println!("{}", print_using_chafa(&song.cover)?);
+    print!("{}", print_using_chafa(&song.cover)?);
+    println!("{} - {}", song.artist, song.title);
 
     // let mut terminal = ratatui::init();
     // run(&mut terminal)?;
