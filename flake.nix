@@ -24,6 +24,8 @@
       {
         defaultPackage = naersk-lib.buildPackage {
           src = ./.;
+          meta.mainProgram = "mpd-tui";
+         
           nativeBuildInputs = [ pkgs.makeWrapper ];
           postInstall = ''
             wrapProgram $out/bin/mpd-tui \
