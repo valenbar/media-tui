@@ -1,0 +1,23 @@
+name: Build release
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v23
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+      - name: Build
+        run: nix build .#defaultPackage.x86_64-linux
+      - name: Upload binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: mpd-tui
+          path: result/bin/
