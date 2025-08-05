@@ -1,8 +1,10 @@
 use color_eyre::Result;
 
-use mpd::Client;
-
+mod app;
+mod ascii;
 mod song;
+
+use crate::app::App;
 
 #[cfg(test)]
 mod tests;
@@ -11,14 +13,16 @@ const MUSIC_LIBRARY: &str = "/mnt/Volume/music-library/Music";
 
 fn main() -> Result<()> {
     color_eyre::install()?;
-    let mut conn = Client::connect("localhost:6600").expect("Failed to connect to MPD server");
 
-    let song = song::Song::from_mpd(&mut conn, MUSIC_LIBRARY.to_string());
+    let app = App::new(
+        MUSIC_LIBRARY.to_string(),
+        Some("localhost".to_string()),
+        Some(6600),
+        Some(ascii::AsciiEngine::Chafa),
+    )?;
 
-    // println!("{}", song.get_cover_ascii().unwrap());
-
-    println!("{}", song.render_cover_using_chafa()?);
-    println!("{} - {}", song.artist, song.title);
+    println!("{}", app.get_cover()?);
+    println!("{} - {}", app.current_song.artist, app.current_song.title);
 
     Ok(())
 }
