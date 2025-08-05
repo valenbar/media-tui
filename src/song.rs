@@ -1,15 +1,15 @@
-use super::*;
-use image::DynamicImage;
-use image::ImageOutputFormat;
-use image::load_from_memory;
-use lofty::file::TaggedFileExt;
-use lofty::probe::Probe;
-use lofty::tag::Accessor;
-use std::fmt::Display;
-use std::io::Cursor;
-use std::io::Write;
-use std::process::Command;
-use std::process::Stdio;
+use color_eyre::{
+    Result,
+    eyre::{WrapErr, bail},
+};
+use image::{DynamicImage, ImageOutputFormat, load_from_memory};
+use lofty::{file::TaggedFileExt, probe::Probe, tag::Accessor};
+use mpd::Client;
+use std::{
+    fmt::Display,
+    io::{Cursor, Write},
+    process::{Command, Stdio},
+};
 
 pub struct Song {
     pub title: String,
@@ -50,7 +50,8 @@ impl Song {
         }
     }
 
-    pub fn get_cover_ascii(&self) -> Result<String> {
+    #[allow(dead_code)]
+    pub fn render_cover_using_rascii(&self) -> Result<String> {
         let mut cover_ascii = String::new();
         let charset = self
             .album
@@ -76,6 +77,34 @@ impl Song {
         .expect("ERROR: Failed to render ascii image");
         Ok(cover_ascii)
     }
+
+    pub fn render_cover_using_chafa(&self) -> Result<String> {
+        let mut image_buffer = Cursor::new(Vec::new());
+        self.cover
+            .write_to(&mut image_buffer, ImageOutputFormat::Png)?;
+        let image_bytes = image_buffer.into_inner();
+
+        let mut child = Command::new("chafa")
+            .arg("--size=25x25")
+            .arg("--format=symbols")
+            .arg("--colors=full")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .wrap_err("failed to execute chafa command")?;
+
+        {
+            let mut stdin = child.stdin.take().unwrap();
+            if let Err(err) = stdin.write_all(&image_bytes) {
+                let _ = child.wait();
+                bail!("failed to write image bytes: {err}");
+            }
+        }
+
+        let output = child.wait_with_output()?;
+        let ascii = String::from_utf8(output.stdout)?;
+        Ok(ascii)
+    }
 }
 
 impl Display for Song {
@@ -83,33 +112,6 @@ impl Display for Song {
         writeln!(f, "Title: {}", self.title)?;
         writeln!(f, "Artist: {}", self.artist)?;
         writeln!(f, "Album: {}", self.album)?;
-        writeln!(f, "{}", &self.get_cover_ascii().expect("fail"))
+        writeln!(f, "{}", &self.render_cover_using_chafa().unwrap())
     }
-}
-
-pub fn print_using_chafa(image: &DynamicImage) -> Result<String> {
-    let mut image_buffer = Cursor::new(Vec::new());
-    image.write_to(&mut image_buffer, ImageOutputFormat::Png)?;
-    let image_bytes = image_buffer.into_inner();
-
-    let mut child = Command::new("chafa")
-        .arg("--size=25x25")
-        .arg("--format=symbols")
-        .arg("--colors=full")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()
-        .wrap_err("failed to execute chafa command")?;
-
-    {
-        let mut stdin = child.stdin.take().unwrap();
-        if let Err(err) = stdin.write_all(&image_bytes) {
-            let _ = child.wait();
-            bail!("failed to write image bytes: {err}");
-        }
-    }
-
-    let output = child.wait_with_output()?;
-    let ascii = String::from_utf8(output.stdout)?;
-    Ok(ascii)
 }

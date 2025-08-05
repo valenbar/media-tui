@@ -1,7 +1,4 @@
-use color_eyre::{
-    Result,
-    eyre::{WrapErr, bail},
-};
+use color_eyre::Result;
 
 use mpd::Client;
 
@@ -20,10 +17,7 @@ fn main() -> Result<()> {
 
     // println!("{}", song.get_cover_ascii().unwrap());
 
-    print!(
-        "{}",
-        song::print_using_chafa(&song.cover).wrap_err("failed to generate ascii")?
-    );
+    println!("{}", song.render_cover_using_chafa()?);
     println!("{} - {}", song.artist, song.title);
 
     Ok(())
