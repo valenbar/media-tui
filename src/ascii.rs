@@ -10,6 +10,20 @@ use color_eyre::{
 };
 use image::{DynamicImage, ImageOutputFormat};
 
+pub struct Size {
+    pub width: u16,
+    pub height: u16,
+}
+
+impl Default for Size {
+    fn default() -> Self {
+        Self {
+            width: 25,
+            height: 25,
+        }
+    }
+}
+
 pub enum AsciiEngine {
     Chafa,
     Rascii,
@@ -22,26 +36,30 @@ impl Default for AsciiEngine {
 }
 
 impl AsciiEngine {
-    pub fn render_image_ansi(&self, image: &DynamicImage) -> Result<String> {
+    pub fn render_image_ansi(&self, image: &DynamicImage, size: Size) -> Result<String> {
         match self {
-            AsciiEngine::Chafa => Self::render_image_with_chafa(image),
-            AsciiEngine::Rascii => Self::render_image_with_rascii(image),
+            AsciiEngine::Chafa => Self::render_image_with_chafa(image, size),
+            AsciiEngine::Rascii => Self::render_image_with_rascii(image, size),
         }
     }
 
-    pub fn render_image_tui(&self, image: &DynamicImage) -> Result<ratatui::text::Text> {
-        let buffer = self.render_image_ansi(image)?;
+    pub fn render_image_tui(
+        &self,
+        image: &DynamicImage,
+        size: Size,
+    ) -> Result<ratatui::text::Text> {
+        let buffer = self.render_image_ansi(image, size)?;
         let tui_text = buffer.into_text()?;
         Ok(tui_text)
     }
 
-    fn render_image_with_chafa(image: &DynamicImage) -> Result<String> {
+    fn render_image_with_chafa(image: &DynamicImage, size: Size) -> Result<String> {
         let mut image_buffer = Cursor::new(Vec::new());
         image.write_to(&mut image_buffer, ImageOutputFormat::Png)?;
         let image_bytes = image_buffer.into_inner();
 
         let mut child = Command::new("chafa")
-            .arg("--size=25x25")
+            .arg(format!("--size={}x{}", size.width, size.height))
             .arg("--format=symbols")
             .arg("--colors=full")
             .stdin(Stdio::piped())
@@ -62,13 +80,14 @@ impl AsciiEngine {
         Ok(ascii)
     }
 
-    fn render_image_with_rascii(image: &DynamicImage) -> Result<String> {
+    fn render_image_with_rascii(image: &DynamicImage, size: Size) -> Result<String> {
         let mut cover_ascii = String::new();
         rascii_art::render_image_to(
             image,
             &mut cover_ascii,
             &rascii_art::RenderOptions {
-                width: Some(25),
+                width: Some(size.width.into()),
+                height: Some(size.height.into()),
                 colored: true,
                 // charset: &["▁", "▂", "▃", "▄", "▅", "▆", "▇"],
                 // charset: &["󰝤"],

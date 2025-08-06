@@ -4,7 +4,7 @@ use lofty::{file::TaggedFileExt, probe::Probe, tag::Accessor};
 use mpd::Client;
 use std::fmt::Display;
 
-use crate::ascii::AsciiEngine;
+use crate::ascii::{self, AsciiEngine};
 
 #[derive(Default)]
 pub struct Song {
@@ -55,7 +55,9 @@ impl Display for Song {
         writeln!(
             f,
             "{}",
-            AsciiEngine::Chafa.render_image_ansi(&self.cover).unwrap()
+            AsciiEngine::Chafa
+                .render_image_ansi(&self.cover, ascii::Size::default())
+                .unwrap()
         )
     }
 }

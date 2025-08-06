@@ -1,6 +1,6 @@
 use color_eyre::{Result, eyre::WrapErr};
 use ratatui::style::Stylize;
-use ratatui::widgets::{Block, Widget};
+use ratatui::widgets::Widget;
 use ratatui::{DefaultTerminal, text};
 
 use crate::ascii;
@@ -50,13 +50,14 @@ impl App {
         Ok(app)
     }
 
-    pub fn get_cover_ascii(&self) -> Result<String> {
+    pub fn get_cover_ascii(&self, size: ascii::Size) -> Result<String> {
         self.ascii_engine
-            .render_image_ansi(&self.current_song.cover)
+            .render_image_ansi(&self.current_song.cover, size)
     }
 
-    pub fn get_cover_ascii_tui(&self) -> Result<text::Text> {
-        self.ascii_engine.render_image_tui(&self.current_song.cover)
+    pub fn get_cover_ascii_tui(&self, size: ascii::Size) -> Result<text::Text> {
+        self.ascii_engine
+            .render_image_tui(&self.current_song.cover, size)
     }
 
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<()> {
@@ -76,6 +77,7 @@ impl App {
     }
 
     fn handle_events(&mut self) -> Result<()> {
+        // TODO check if mpd song changed
         match crossterm::event::read()? {
             crossterm::event::Event::Key(key_event)
                 if key_event.kind == crossterm::event::KeyEventKind::Press =>
@@ -90,8 +92,16 @@ impl App {
     fn handle_key_event(&mut self, key_event: crossterm::event::KeyEvent) -> Result<()> {
         match key_event.code {
             crossterm::event::KeyCode::Char('q') => self.exit(),
-            // KeyCode::Left => self.decrement_counter()?,
-            // KeyCode::Right => self.increment_counter()?,
+            crossterm::event::KeyCode::Esc => self.exit(),
+            crossterm::event::KeyCode::Enter => self.mpd_connection.toggle_pause()?,
+            crossterm::event::KeyCode::Left => {
+                self.mpd_connection.prev()?;
+                self.current_song = Song::from_mpd(&mut self.mpd_connection, &self.music_library)?
+            }
+            crossterm::event::KeyCode::Right => {
+                self.mpd_connection.next()?;
+                self.current_song = Song::from_mpd(&mut self.mpd_connection, &self.music_library)?
+            }
             _ => {}
         }
         Ok(())
@@ -106,7 +116,14 @@ impl Widget for &App {
             "zeile1".into(),
             "bottom text".into(),
         ])]);
-        let ascii = match self.ascii_engine.render_image_tui(&self.current_song.cover) {
+        let ascii_size = ascii::Size {
+            width: area.width,
+            height: area.height,
+        };
+        let ascii = match self
+            .ascii_engine
+            .render_image_tui(&self.current_song.cover, ascii_size)
+        {
             Ok(ascii) => ascii,
             Err(e) => ratatui::text::Text::from(e.to_string()),
         };
