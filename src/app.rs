@@ -1,4 +1,7 @@
 use color_eyre::{Result, eyre::WrapErr};
+use ratatui::style::Stylize;
+use ratatui::widgets::{Block, Widget};
+use ratatui::{DefaultTerminal, text};
 
 use crate::ascii;
 use crate::song::Song;
@@ -47,8 +50,70 @@ impl App {
         Ok(app)
     }
 
-    pub fn get_cover(&self) -> Result<String> {
-        self.current_song.generate_cover_ascii(&self.ascii_engine)
+    pub fn get_cover_ascii(&self) -> Result<String> {
+        self.ascii_engine
+            .render_image_ansi(&self.current_song.cover)
+    }
+
+    pub fn get_cover_ascii_tui(&self) -> Result<text::Text> {
+        self.ascii_engine.render_image_tui(&self.current_song.cover)
+    }
+
+    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<()> {
+        while !self.exit {
+            terminal.draw(|frame| self.draw(frame))?;
+            self.handle_events().wrap_err("handle events failed")?;
+        }
+        Ok(())
+    }
+
+    fn exit(&mut self) {
+        self.exit = true;
+    }
+
+    fn draw(&self, frame: &mut ratatui::Frame) {
+        frame.render_widget(self, frame.area());
+    }
+
+    fn handle_events(&mut self) -> Result<()> {
+        match crossterm::event::read()? {
+            crossterm::event::Event::Key(key_event)
+                if key_event.kind == crossterm::event::KeyEventKind::Press =>
+            {
+                self.handle_key_event(key_event)
+                    .wrap_err_with(|| format!("handling key event failed:\n{key_event:#?}"))
+            }
+            _ => Ok(()),
+        }
+    }
+
+    fn handle_key_event(&mut self, key_event: crossterm::event::KeyEvent) -> Result<()> {
+        match key_event.code {
+            crossterm::event::KeyCode::Char('q') => self.exit(),
+            // KeyCode::Left => self.decrement_counter()?,
+            // KeyCode::Right => self.increment_counter()?,
+            _ => {}
+        }
+        Ok(())
+    }
+}
+
+impl Widget for &App {
+    fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer) {
+        let title = ratatui::text::Line::from(" Title ".bold());
+        let block = ratatui::widgets::Block::bordered().title(title.centered());
+        let text = ratatui::text::Text::from(vec![ratatui::text::Line::from(vec![
+            "zeile1".into(),
+            "bottom text".into(),
+        ])]);
+        let ascii = match self.ascii_engine.render_image_tui(&self.current_song.cover) {
+            Ok(ascii) => ascii,
+            Err(e) => ratatui::text::Text::from(e.to_string()),
+        };
+        ratatui::widgets::Paragraph::new(ascii)
+            .centered()
+            .block(block)
+            .render(area, buf);
     }
 }
 

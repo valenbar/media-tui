@@ -4,7 +4,7 @@ use lofty::{file::TaggedFileExt, probe::Probe, tag::Accessor};
 use mpd::Client;
 use std::fmt::Display;
 
-use crate::ascii;
+use crate::ascii::AsciiEngine;
 
 #[derive(Default)]
 pub struct Song {
@@ -45,13 +45,6 @@ impl Song {
             cover,
         })
     }
-
-    pub fn generate_cover_ascii(&self, cover_engine: &ascii::AsciiEngine) -> Result<String> {
-        match cover_engine {
-            ascii::AsciiEngine::Chafa => ascii::AsciiEngine::Chafa.render_image(&self.cover),
-            ascii::AsciiEngine::Rascii => ascii::AsciiEngine::Rascii.render_image(&self.cover),
-        }
-    }
 }
 
 impl Display for Song {
@@ -62,9 +55,7 @@ impl Display for Song {
         writeln!(
             f,
             "{}",
-            &self
-                .generate_cover_ascii(&ascii::AsciiEngine::Chafa)
-                .unwrap()
+            AsciiEngine::Chafa.render_image_ansi(&self.cover).unwrap()
         )
     }
 }

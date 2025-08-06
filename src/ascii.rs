@@ -3,6 +3,7 @@ use std::{
     process::{Command, Stdio},
 };
 
+use ansi_to_tui::{self, IntoText};
 use color_eyre::{
     Result,
     eyre::{Context, bail},
@@ -21,11 +22,17 @@ impl Default for AsciiEngine {
 }
 
 impl AsciiEngine {
-    pub fn render_image(&self, image: &DynamicImage) -> Result<String> {
+    pub fn render_image_ansi(&self, image: &DynamicImage) -> Result<String> {
         match self {
             AsciiEngine::Chafa => Self::render_image_with_chafa(image),
             AsciiEngine::Rascii => Self::render_image_with_rascii(image),
         }
+    }
+
+    pub fn render_image_tui(&self, image: &DynamicImage) -> Result<ratatui::text::Text> {
+        let buffer = self.render_image_ansi(image)?;
+        let tui_text = buffer.into_text()?;
+        Ok(tui_text)
     }
 
     fn render_image_with_chafa(image: &DynamicImage) -> Result<String> {
