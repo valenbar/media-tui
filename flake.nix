@@ -19,14 +19,23 @@
         naersk-lib = pkgs.callPackage naersk { };
         runtimeDependencies = with pkgs; [
           chafa
+          dbus
+          pkg-config
         ];
       in
       {
         defaultPackage = naersk-lib.buildPackage {
           src = ./.;
           meta.mainProgram = "mpd-tui";
-         
-          nativeBuildInputs = [ pkgs.makeWrapper ];
+
+          # buildInputs = with pkgs; [ dbus ];
+
+          nativeBuildInputs = with pkgs; [
+            makeWrapper
+            dbus
+            pkg-config
+          ];
+
           postInstall = ''
             wrapProgram $out/bin/mpd-tui \
               --prefix PATH : ${pkgs.lib.makeBinPath runtimeDependencies}

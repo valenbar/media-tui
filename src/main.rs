@@ -21,6 +21,8 @@ fn main() -> Result<()> {
         MUSIC_LIBRARY.to_owned(),
     )?);
 
+    // let player: Box<dyn player::Player> = Box::new(player::MPRISPlayer::new()?);
+
     let mut app = App::new(player, Some(ascii::AsciiEngine::Chafa))?;
 
     let mut terminal = ratatui::init();

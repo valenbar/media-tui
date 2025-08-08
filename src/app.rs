@@ -30,13 +30,17 @@ impl App {
     }
 
     pub fn get_cover_ascii(&self, size: ascii::Size) -> Result<String> {
-        self.ascii_engine
-            .render_image_ansi(&self.current_song.cover, size)
+        match &self.current_song.cover {
+            Some(cover_image) => self.ascii_engine.render_image_ansi(cover_image, size),
+            None => Ok("<missing cover>".to_string()),
+        }
     }
 
     pub fn get_cover_ascii_tui(&self, size: ascii::Size) -> Result<text::Text> {
-        self.ascii_engine
-            .render_image_tui(&self.current_song.cover, size)
+        match &self.current_song.cover {
+            Some(cover_image) => self.ascii_engine.render_image_tui(cover_image, size),
+            None => Ok(text::Text::from("<missing cover>")),
+        }
     }
 
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<()> {
@@ -75,7 +79,7 @@ impl App {
             KeyCode::Esc => self.exit(),
             KeyCode::Enter => self.player.toggle_play_pause()?,
             KeyCode::Left => {
-                self.player.prev_song()?;
+                self.player.previous_song()?;
                 self.current_song = self.player.get_song_info()?
             }
             KeyCode::Right => {
@@ -109,13 +113,16 @@ impl Widget for &App {
             width: area.width,
             height: area.height,
         };
-        let ascii = match self
-            .ascii_engine
-            .render_image_tui(&self.current_song.cover, ascii_size)
-        {
-            Ok(ascii) => ascii,
-            Err(e) => ratatui::text::Text::from(e.to_string()),
-        };
+        let ascii = self
+            .get_cover_ascii_tui(ascii_size)
+            .expect("Failed to get Cover in tui format");
+        // let ascii = match self
+        //     .ascii_engine
+        //     .render_image_tui(&self.current_song.cover, ascii_size)
+        // {
+        //     Ok(ascii) => ascii,
+        //     Err(e) => ratatui::text::Text::from(e.to_string()),
+        // };
         ratatui::widgets::Paragraph::new(ascii)
             .centered()
             .block(block)
