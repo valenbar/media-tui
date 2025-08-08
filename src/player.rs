@@ -8,8 +8,7 @@ use lofty::{file::TaggedFileExt, probe::Probe, tag::Accessor};
 
 use crate::song;
 
-const DEFAULT_HOST: &str = "localhost";
-const DEFAULT_PORT: u32 = 6600;
+const MPRIS_METADATA_QUERY_DELAY: Duration = Duration::from_millis(300);
 
 pub trait Player {
     fn next_song(&mut self) -> Result<()>;
@@ -24,17 +23,6 @@ pub struct MPDPlayer {
     port: u32,
     music_library_dir: String,
     mpd_connection: mpd::Client,
-}
-
-impl Default for MPDPlayer {
-    fn default() -> Self {
-        Self {
-            host: DEFAULT_HOST.to_string(),
-            port: DEFAULT_PORT,
-            music_library_dir: Default::default(),
-            mpd_connection: Default::default(),
-        }
-    }
 }
 
 impl MPDPlayer {
@@ -81,7 +69,12 @@ impl Player for MPDPlayer {
         let file = format!("{}/{}", self.music_library_dir, &current_song.file);
 
         let tagged_file = Probe::open(file)
-            .expect("ERROR: Bad path provided!")
+            .wrap_err_with(|| {
+                format!(
+                    "Failed to open audio file at:\n{}/{}\nunable to get cover image",
+                    self.music_library_dir, &current_song.file
+                )
+            })?
             .read()
             .expect("ERROR: Failed to read file!");
 
@@ -118,13 +111,13 @@ impl MPRISPlayer {
 impl Player for MPRISPlayer {
     fn next_song(&mut self) -> Result<()> {
         self.mpris_player.next()?;
-        sleep(Duration::from_millis(300));
+        sleep(MPRIS_METADATA_QUERY_DELAY);
         Ok(())
     }
 
     fn previous_song(&mut self) -> Result<()> {
         self.mpris_player.previous()?;
-        sleep(Duration::from_millis(300));
+        sleep(MPRIS_METADATA_QUERY_DELAY);
         Ok(())
     }
 
