@@ -90,17 +90,25 @@ impl App {
     }
 
     fn handle_key_event(&mut self, key_event: crossterm::event::KeyEvent) -> Result<()> {
+        use crossterm::event::KeyCode;
         match key_event.code {
-            crossterm::event::KeyCode::Char('q') => self.exit(),
-            crossterm::event::KeyCode::Esc => self.exit(),
-            crossterm::event::KeyCode::Enter => self.mpd_connection.toggle_pause()?,
-            crossterm::event::KeyCode::Left => {
+            KeyCode::Char('q') => self.exit(),
+            KeyCode::Esc => self.exit(),
+            KeyCode::Enter => self.mpd_connection.toggle_pause()?,
+            KeyCode::Left => {
                 self.mpd_connection.prev()?;
                 self.current_song = Song::from_mpd(&mut self.mpd_connection, &self.music_library)?
             }
-            crossterm::event::KeyCode::Right => {
+            KeyCode::Right => {
                 self.mpd_connection.next()?;
                 self.current_song = Song::from_mpd(&mut self.mpd_connection, &self.music_library)?
+            }
+            KeyCode::Char('c') => {
+                use ascii::AsciiEngine::{Chafa, Rascii};
+                self.ascii_engine = match self.ascii_engine {
+                    Chafa => Rascii,
+                    Rascii => Chafa,
+                }
             }
             _ => {}
         }
