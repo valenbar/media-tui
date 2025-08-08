@@ -2,6 +2,7 @@ use color_eyre::Result;
 
 mod app;
 mod ascii;
+mod player;
 mod song;
 
 use crate::app::App;
@@ -14,12 +15,13 @@ const MUSIC_LIBRARY: &str = "/mnt/Volume/music-library/Music";
 fn main() -> Result<()> {
     color_eyre::install()?;
 
-    let mut app = App::new(
-        MUSIC_LIBRARY.to_string(),
-        Some("localhost".to_string()),
-        Some(6600),
-        Some(ascii::AsciiEngine::Chafa),
-    )?;
+    let player: Box<dyn player::Player> = Box::new(player::MPDPlayer::new(
+        "localhost".to_string(),
+        6600,
+        MUSIC_LIBRARY.to_owned(),
+    )?);
+
+    let mut app = App::new(player, Some(ascii::AsciiEngine::Chafa))?;
 
     let mut terminal = ratatui::init();
     let app_result = app.run(&mut terminal);
