@@ -110,12 +110,14 @@ impl App {
 
 impl Widget for &App {
     fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer) {
-        let title = ratatui::text::Line::from(" Title ".bold());
-        let block = ratatui::widgets::Block::bordered().title(title.centered());
-        let text = ratatui::text::Text::from(vec![ratatui::text::Line::from(vec![
-            "zeile1".into(),
-            "bottom text".into(),
-        ])]);
+        let song_title = &self.current_song.title;
+        let song_artist = &self.current_song.artist;
+        let song_album = &self.current_song.album;
+        let header = ratatui::text::Line::from(format!(" {song_title} - {song_artist} ").bold());
+        let footer = ratatui::text::Line::from(format!(" {song_album} ").bold());
+        let block = ratatui::widgets::Block::bordered()
+            .title_top(header.centered())
+            .title_bottom(footer.centered());
         let ascii_size = ascii::Size {
             width: area.width,
             height: area.height,
