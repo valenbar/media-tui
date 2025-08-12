@@ -1,8 +1,8 @@
-use std::{thread::sleep, time::Duration};
+use std::{fs::File, io::BufReader, thread::sleep, time::Duration};
 
 use color_eyre::{
     Result,
-    eyre::{Context, bail},
+    eyre::{self, Context, bail},
 };
 use lofty::{file::TaggedFileExt, probe::Probe, tag::Accessor};
 
@@ -83,6 +83,9 @@ impl Player for MPDPlayer {
             None => TaggedFileExt::first_tag(&tagged_file).expect("ERROR: No tags found!"),
         };
 
+        // TODO handle rating tags
+        // let rating = tag.get_string(&lofty::tag::ItemKey::Popularimeter);
+
         let album = tag.album().as_deref().unwrap_or("None").to_owned();
 
         let cover = tag.pictures()[0].clone();
@@ -159,9 +162,23 @@ fn get_cover_image_from_url(image_url: &str) -> Result<Option<image::DynamicImag
         "file" => {
             let path = url
                 .to_file_path()
-                .expect("Failed to convert file URL to path");
-            let img = image::io::Reader::open(path)?.decode()?;
-            Ok(Some(img))
+                .map_err(|_| eyre::eyre!("invalid file URL"))
+                .wrap_err("Failed to convert file URL to path")?;
+
+            let img = match path.extension() {
+                Some(_) => {
+                    // infers image format from extension
+                    image::io::Reader::open(&path)?
+                        .decode()
+                        .wrap_err("Failed to open image from path")?
+                }
+                None => {
+                    // Assume file without extension is a jpeg
+                    let image_format = image::ImageFormat::Jpeg;
+                    image::load(BufReader::new(File::open(&path)?), image_format)
+                        .wrap_err("Failed to load image without extension as a jpeg")?
+                }
+            };
         }
         "http" | "https" => {
             let response = reqwest::blocking::get(url.as_str()).wrap_err("HTTP request failed")?;
