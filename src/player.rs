@@ -8,7 +8,7 @@ use lofty::{file::TaggedFileExt, probe::Probe, tag::Accessor};
 
 use crate::song;
 
-const MPRIS_METADATA_QUERY_DELAY: Duration = Duration::from_millis(300);
+const MPRIS_METADATA_QUERY_DELAY: Duration = Duration::from_millis(100);
 
 pub trait Player {
     fn next_song(&mut self) -> Result<()>;
@@ -113,14 +113,26 @@ impl MPRISPlayer {
 
 impl Player for MPRISPlayer {
     fn next_song(&mut self) -> Result<()> {
+        let events = self.mpris_player.events()?;
         self.mpris_player.next()?;
-        sleep(MPRIS_METADATA_QUERY_DELAY);
+        for event in events {
+            match event? {
+                mpris::Event::TrackChanged(metadata) => break,
+                _ => continue,
+            }
+        }
         Ok(())
     }
 
     fn previous_song(&mut self) -> Result<()> {
+        let events = self.mpris_player.events()?;
         self.mpris_player.previous()?;
-        sleep(MPRIS_METADATA_QUERY_DELAY);
+        for event in events {
+            match event? {
+                mpris::Event::TrackChanged(metadata) => break,
+                _ => continue,
+            }
+        }
         Ok(())
     }
 
@@ -179,6 +191,7 @@ fn get_cover_image_from_url(image_url: &str) -> Result<Option<image::DynamicImag
                         .wrap_err("Failed to load image without extension as a jpeg")?
                 }
             };
+            Ok(Some(img))
         }
         "http" | "https" => {
             let response = reqwest::blocking::get(url.as_str()).wrap_err("HTTP request failed")?;
