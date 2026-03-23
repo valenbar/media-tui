@@ -163,8 +163,19 @@ fn get_cover_image_from_url(image_url: &str) -> Result<Option<image::DynamicImag
             let img = image::io::Reader::open(path)?.decode()?;
             Ok(Some(img))
         }
+        "http" | "https" => {
+            let response = reqwest::blocking::get(url.as_str()).wrap_err("HTTP request failed")?;
+            if !response.status().is_success() {
+                bail!("HTTP request returned error: {}", response.status());
+            }
+            let bytes = response.bytes().wrap_err("Failed to read response body")?;
+            let img = image::load_from_memory(&bytes).wrap_err("Failed to decode image")?;
+            Ok(Some(img))
+        }
         scheme => {
-            bail!("Unable to load image from URL, scheme: \"{scheme}\" not implemented yet");
+            bail!(
+                "Unable to load image from URL, scheme: \"{scheme}\" not implemented yet. unable to get thumbnail from: {url}"
+            );
         }
     }
 }
