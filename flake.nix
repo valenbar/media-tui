@@ -1,6 +1,5 @@
 {
   inputs = {
-    naersk.url = "github:nix-community/naersk/master";
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     utils.url = "github:numtide/flake-utils";
   };
@@ -10,13 +9,11 @@
       self,
       nixpkgs,
       utils,
-      naersk,
     }:
     utils.lib.eachDefaultSystem (
       system:
       let
         pkgs = import nixpkgs { inherit system; };
-        naersk-lib = pkgs.callPackage naersk { };
         runtimeDependencies = with pkgs; [
           chafa
           dbus
@@ -24,11 +21,15 @@
         ];
       in
       {
-        defaultPackage = naersk-lib.buildPackage {
-          src = ./.;
-          meta.mainProgram = "mpd-tui";
 
-          # buildInputs = with pkgs; [ dbus ];
+        defaultPackage = pkgs.rustPlatform.buildRustPackage {
+          pname = "mpd-tui";
+          version = "0.2.0";
+          src = ./.;
+
+          cargoHash = "sha256-cLS4shmI+i71rvH8kBLMalW5CqsqiXU/5Go/65NzWO4=";
+
+          buildInputs = with pkgs; [ dbus ];
 
           nativeBuildInputs = with pkgs; [
             makeWrapper
@@ -40,7 +41,10 @@
             wrapProgram $out/bin/mpd-tui \
               --prefix PATH : ${pkgs.lib.makeBinPath runtimeDependencies}
           '';
+
+          meta.mainProgram = "mpd-tui";
         };
+
         devShell =
           with pkgs;
           mkShell {
