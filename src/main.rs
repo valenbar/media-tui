@@ -12,7 +12,6 @@ use crate::app::App;
 mod tests;
 
 const DEFAULT_ADDRESS: &str = "localhost:6600";
-const DEFAULT_DIR: &str = "/mnt/Volume/music-library/Music";
 
 #[derive(Debug, Clone, ValueEnum)]
 enum PlayerSelection {
@@ -25,7 +24,7 @@ enum PlayerSelection {
 #[command(version, about, long_about = None)]
 struct Args {
     /// player to use
-    #[arg(short, long, value_enum, default_value_t = PlayerSelection::Mpd)]
+    #[arg(short, long, value_enum, default_value_t = PlayerSelection::Mpris, requires_if("mpd", "dir"))]
     player: PlayerSelection,
 
     /// MPD server address in format 'hostname:port'
@@ -33,8 +32,8 @@ struct Args {
     address: (String, u32),
 
     /// MPD music directory
-    #[arg(short, long, value_parser = parse_dir, default_value = DEFAULT_DIR)]
-    dir: String,
+    #[arg(short, long, value_parser = parse_dir)]
+    dir: Option<String>,
 }
 
 /// Custom parser for host:port format
@@ -64,7 +63,7 @@ fn main() -> Result<()> {
         PlayerSelection::Mpd => {
             let host = args.address.0;
             let port = args.address.1;
-            let music_library_dir = args.dir;
+            let music_library_dir = args.dir.unwrap();
             Box::new(player::MPDPlayer::new(host, port, music_library_dir)?)
         }
 
