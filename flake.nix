@@ -23,11 +23,11 @@
       {
 
         defaultPackage = pkgs.rustPlatform.buildRustPackage {
-          pname = "mpd-tui";
+          pname = "media-tui";
           version = "0.2.0";
           src = ./.;
 
-          cargoHash = "sha256-cLS4shmI+i71rvH8kBLMalW5CqsqiXU/5Go/65NzWO4=";
+          cargoHash = "sha256-2ipmYjUUD75VFFYBkVop0zy0fPvjHQGadLSrcCtJK4w=";
 
           buildInputs = with pkgs; [ dbus ];
 
@@ -38,11 +38,11 @@
           ];
 
           postInstall = ''
-            wrapProgram $out/bin/mpd-tui \
+            wrapProgram $out/bin/media-tui \
               --prefix PATH : ${pkgs.lib.makeBinPath runtimeDependencies}
           '';
 
-          meta.mainProgram = "mpd-tui";
+          meta.mainProgram = "media-tui";
         };
 
         devShell =
