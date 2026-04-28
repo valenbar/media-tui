@@ -55,6 +55,7 @@
               pre-commit
               rustPackages.clippy
               bacon
+              rust-analyzer
             ]
             ++ runtimeDependencies;
 
