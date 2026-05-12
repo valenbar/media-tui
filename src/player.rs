@@ -1,19 +1,13 @@
-use std::{fs::File, io::BufReader, thread::sleep, time::Duration};
-
-use color_eyre::{
-    Result,
-    eyre::{self, Context, bail},
-};
+use color_eyre::{Result, eyre::Context};
 
 use crate::song;
-
-const MPRIS_METADATA_QUERY_DELAY: Duration = Duration::from_millis(100);
 
 pub trait Player {
     fn next_song(&mut self) -> Result<()>;
     fn previous_song(&mut self) -> Result<()>;
     fn toggle_play_pause(&mut self) -> Result<()>;
     fn get_song_info(&mut self) -> Result<song::Song>;
+    fn track_changed(&mut self, current_song: &song::Song) -> Result<bool>;
     // fn get_song_cover(&mut self) -> Result<image::DynamicImage>;
 }
 
@@ -66,6 +60,11 @@ impl Player for MPDPlayer {
             .unwrap();
         song::Song::from_mpd(current_song, &self.music_library_dir)
     }
+
+    fn track_changed(&mut self, current_song: &song::Song) -> Result<bool> {
+        let title = self.mpd_connection.currentsong()?.unwrap().title.unwrap();
+        Ok(current_song.title != title)
+    }
 }
 
 pub struct MPRISPlayer {
@@ -112,5 +111,12 @@ impl Player for MPRISPlayer {
     fn get_song_info(&mut self) -> Result<song::Song> {
         let metadata = self.mpris_player.get_metadata()?;
         song::Song::from_mpris(metadata)
+    }
+
+    fn track_changed(&mut self, current_song: &song::Song) -> Result<bool> {
+        let metadata = self.mpris_player.get_metadata()?;
+        let title = metadata.title().unwrap_or("<missing title>").to_string();
+
+        Ok(current_song.title != title)
     }
 }

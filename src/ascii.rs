@@ -27,6 +27,7 @@ impl Default for Size {
 pub enum AsciiEngine {
     Chafa,
     Rascii,
+    // TODO add kitty rendering support
 }
 
 impl Default for AsciiEngine {

@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use color_eyre::{Result, eyre::WrapErr};
 use ratatui::style::Stylize;
 use ratatui::widgets::Widget;
@@ -60,15 +62,21 @@ impl App {
     }
 
     fn handle_events(&mut self) -> Result<()> {
-        // TODO check if mpd song changed
-        match crossterm::event::read()? {
-            crossterm::event::Event::Key(key_event)
-                if key_event.kind == crossterm::event::KeyEventKind::Press =>
-            {
-                self.handle_key_event(key_event)
-                    .wrap_err_with(|| format!("handling key event failed:\n{key_event:#?}"))
+        if crossterm::event::poll(Duration::from_secs(1))? {
+            match crossterm::event::read()? {
+                crossterm::event::Event::Key(key_event)
+                    if key_event.kind == crossterm::event::KeyEventKind::Press =>
+                {
+                    self.handle_key_event(key_event)
+                        .wrap_err_with(|| format!("handling key event failed:\n{key_event:#?}"))
+                }
+                _ => Ok(()),
             }
-            _ => Ok(()),
+        } else {
+            if self.player.track_changed(&self.current_song)? {
+                self.current_song = self.player.get_song_info()?;
+            }
+            Ok(())
         }
     }
 
