@@ -14,55 +14,63 @@
       system:
       let
         pkgs = import nixpkgs { inherit system; };
+
         runtimeDependencies = with pkgs; [
           chafa
+        ];
+
+        nativeBuildInputs = with pkgs; [
+          makeWrapper
           dbus
           pkg-config
         ];
+
+        buildInputs = with pkgs; [ dbus ];
+
+        version = (fromTOML (builtins.readFile ./Cargo.toml)).package.version;
       in
       {
+        devShells.default =
+          with pkgs;
+          mkShell {
+            packages = [
+              cargo
+              rustc
+              rustfmt
+              rustPackages.clippy
+              bacon
+              rust-analyzer
+            ]
+            ++ nativeBuildInputs
+            ++ buildInputs
+            ++ runtimeDependencies;
 
-        defaultPackage = pkgs.rustPlatform.buildRustPackage {
+            RUST_SRC_PATH = rustPlatform.rustLibSrc;
+          };
+
+        defaultPackage = pkgs.rustPlatform.buildRustPackage rec {
+          inherit version nativeBuildInputs buildInputs;
+
           pname = "media-tui";
-          version = "0.2.0";
           src = ./.;
 
           cargoLock = {
             lockFile = ./Cargo.lock;
           };
 
-          buildInputs = with pkgs; [ dbus ];
-
-          nativeBuildInputs = with pkgs; [
-            makeWrapper
-            dbus
-            pkg-config
-          ];
-
           postInstall = ''
-            wrapProgram $out/bin/media-tui \
+            wrapProgram $out/bin/${pname} \
               --prefix PATH : ${pkgs.lib.makeBinPath runtimeDependencies}
           '';
 
-          meta.mainProgram = "media-tui";
+          meta = {
+            description = "";
+            homepage = "";
+            license = [ ];
+            mainProgram = pname;
+          };
         };
 
-        devShell =
-          with pkgs;
-          mkShell {
-            buildInputs = [
-              cargo
-              rustc
-              rustfmt
-              pre-commit
-              rustPackages.clippy
-              bacon
-              rust-analyzer
-            ]
-            ++ runtimeDependencies;
-
-            RUST_SRC_PATH = rustPlatform.rustLibSrc;
-          };
       }
     );
 }
