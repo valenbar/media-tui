@@ -27,7 +27,9 @@
           version = "0.2.0";
           src = ./.;
 
-          cargoHash = "sha256-2ipmYjUUD75VFFYBkVop0zy0fPvjHQGadLSrcCtJK4w=";
+          cargoLock = {
+            lockFile = ./Cargo.lock;
+          };
 
           buildInputs = with pkgs; [ dbus ];
 
